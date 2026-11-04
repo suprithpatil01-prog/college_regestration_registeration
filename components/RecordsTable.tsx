@@ -116,7 +116,7 @@ export function RecordsTable({ records }: RecordsTableProps) {
                     </td>
                     <td>
                       <span className={`status-badge ${isMinor ? 'minor' : 'adult'}`}>
-                        {isMinor ? '⚠ Minor (Guardian Sign)' : '✓ Adult (Direct)'}
+                        {isMinor ? `${record.age} · Minor` : `${record.age} · Adult`}
                       </span>
                     </td>
                     <td>

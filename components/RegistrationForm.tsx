@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { COURSES, FormErrors, StudentFormData } from '@/lib/types';
-import { parseBirthDate, calculateAge } from '@/lib/validation';
+import { parseBirthDate, calculateAge, getNameError, getUsnError, getEmailError, getDobError } from '@/lib/validation';
 
 interface RegistrationFormProps {
   onSubmit: (formData: StudentFormData) => Promise<boolean>;
@@ -30,6 +30,7 @@ export function RegistrationForm({
 }: RegistrationFormProps) {
   const [formData, setFormData] = useState<StudentFormData>(initialFormState);
   const [ageStatus, setAgeStatus] = useState<'empty' | 'minor' | 'adult'>('empty');
+  const [liveErrors, setLiveErrors] = useState<FormErrors>({});
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const usnInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +64,35 @@ export function RegistrationForm({
     }
   };
 
+  const shownError = (field: keyof FormErrors) => errors[field] || liveErrors[field] || '';
+
+  const checkLiveError = (field: keyof StudentFormData, value: string) => {
+    if (field === 'name' && /\d/.test(value)) return getNameError(value);
+    if (field === 'email') {
+      const tld = value.includes('.') ? value.slice(value.lastIndexOf('.') + 1) : '';
+      if (value.includes('@') && tld && /\d/.test(tld)) return getEmailError(value);
+    }
+    if (field === 'dob' && /^(30|31)\/02\/\d{4}$/.test(value.trim())) return getDobError(value);
+    if (field === 'usn' && value.length === 10) return getUsnError(value);
+    return undefined;
+  };
+
+  const handleBlur = (field: keyof StudentFormData) => {
+    let message: string | undefined;
+    if (field === 'name') message = getNameError(formData.name);
+    else if (field === 'usn') message = getUsnError(formData.usn);
+    else if (field === 'email') message = getEmailError(formData.email);
+    else if (field === 'dob') message = getDobError(formData.dob);
+    else return;
+
+    setLiveErrors((prev) => {
+      const next = { ...prev };
+      if (message) next[field] = message;
+      else delete next[field];
+      return next;
+    });
+  };
+
   const handleInputChange = (field: keyof StudentFormData, value: string) => {
     let processedValue = value;
 
@@ -72,6 +102,14 @@ export function RegistrationForm({
 
     setFormData((prev) => ({ ...prev, [field]: processedValue }));
     clearFieldError(field);
+
+    const liveMessage = checkLiveError(field, processedValue);
+    setLiveErrors((prev) => {
+      const next = { ...prev };
+      if (liveMessage) next[field] = liveMessage;
+      else delete next[field];
+      return next;
+    });
 
     if (field === 'age') {
       updateAgeStatusFromValue(processedValue);
@@ -96,12 +134,14 @@ export function RegistrationForm({
     if (success) {
       setFormData(initialFormState);
       setAgeStatus('empty');
+      setLiveErrors({});
     }
   };
 
   const handleReset = () => {
     setFormData(initialFormState);
     setAgeStatus('empty');
+    setLiveErrors({});
     Object.keys(formData).forEach((k) => clearFieldError(k as keyof FormErrors));
   };
 
@@ -137,15 +177,16 @@ export function RegistrationForm({
               maxLength={80}
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
+              onBlur={() => handleBlur('name')}
               onKeyDown={(e) => handleEnterKey(e, usnInputRef)}
-              aria-invalid={!!errors.name}
+              aria-invalid={!!shownError('name')}
               aria-describedby="name-hint name-error"
               required
             />
             <div className="field-foot">
-              <small id="name-hint">Use standard alphabet characters, spaces, or hyphens.</small>
-              <small id="name-error" className="field-error">
-                {errors.name || ''}
+              <small id="name-hint">Letters only. A name such as suprit6gouda is not allowed.</small>
+              <small id="name-error" className="field-error" role={shownError('name') ? 'alert' : undefined}>
+                {shownError('name')}
               </small>
             </div>
           </div>
@@ -168,16 +209,17 @@ export function RegistrationForm({
                 spellCheck={false}
                 value={formData.usn}
                 onChange={(e) => handleInputChange('usn', e.target.value)}
+                onBlur={() => handleBlur('usn')}
                 onKeyDown={(e) => handleEnterKey(e, emailInputRef)}
-                aria-invalid={!!errors.usn}
+                aria-invalid={!!shownError('usn')}
                 aria-describedby="usn-hint usn-error"
                 required
               />
             </div>
             <div className="field-foot">
-              <small id="usn-hint">10 characters (e.g. 2KE24CS164)</small>
-              <small id="usn-error" className="field-error">
-                {errors.usn || ''}
+              <small id="usn-hint">Exactly 10 characters, format 2KE24CS164 only.</small>
+              <small id="usn-error" className="field-error" role={shownError('usn') ? 'alert' : undefined}>
+                {shownError('usn')}
               </small>
             </div>
           </div>
@@ -199,16 +241,17 @@ export function RegistrationForm({
                 maxLength={254}
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
+                onBlur={() => handleBlur('email')}
                 onKeyDown={(e) => handleEnterKey(e, phoneInputRef)}
-                aria-invalid={!!errors.email}
+                aria-invalid={!!shownError('email')}
                 aria-describedby="email-hint email-error"
                 required
               />
             </div>
             <div className="field-foot">
-              <small id="email-hint">Valid email required for exam notices and VTU updates.</small>
-              <small id="email-error" className="field-error">
-                {errors.email || ''}
+              <small id="email-hint">Use a real ending such as .com. Endings like .co8 are rejected.</small>
+              <small id="email-error" className="field-error" role={shownError('email') ? 'alert' : undefined}>
+                {shownError('email')}
               </small>
             </div>
           </div>
@@ -327,16 +370,17 @@ export function RegistrationForm({
                 maxLength={10}
                 value={formData.dob}
                 onChange={(e) => handleInputChange('dob', e.target.value)}
+                onBlur={() => handleBlur('dob')}
                 onKeyDown={(e) => handleEnterKey(e, ageInputRef)}
-                aria-invalid={!!errors.dob}
+                aria-invalid={!!shownError('dob')}
                 aria-describedby="dob-hint dob-error"
                 required
               />
             </div>
             <div className="field-foot">
-              <small id="dob-hint">DD/MM/YYYY (e.g. 15/08/2006)</small>
-              <small id="dob-error" className="field-error">
-                {errors.dob || ''}
+              <small id="dob-hint">DD/MM/YYYY. 30 and 31 February are not allowed.</small>
+              <small id="dob-error" className="field-error" role={shownError('dob') ? 'alert' : undefined}>
+                {shownError('dob')}
               </small>
             </div>
           </div>
@@ -391,7 +435,7 @@ export function RegistrationForm({
             <>
               <span className="status-icon">!</span>
               <span>
-                <strong>Minor Student Verification</strong> · Candidate is under 18. Mandatory Parent / Legal Guardian Co-Signatory Consent form required.
+                <strong>Minor</strong> · Age {formData.age} is under 18. Parent / legal guardian consent is required.
               </span>
             </>
           )}

@@ -49,7 +49,7 @@ export function SuccessReceipt({ record }: SuccessReceiptProps) {
           <div>
             <small>ELIGIBILITY STATUS</small>
             <strong className={isMinor ? 'minor-text' : 'adult-text'}>
-              {record.age} Yrs · {isMinor ? 'Minor (Guardian Co-Sign)' : 'Eligible Adult'}
+              {record.age} · {isMinor ? 'Minor' : 'Adult'}
             </strong>
           </div>
           <div>

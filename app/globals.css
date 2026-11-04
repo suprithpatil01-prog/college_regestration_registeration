@@ -954,6 +954,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 4px;
 }
@@ -965,8 +966,11 @@ a {
 
 .field-foot .field-error {
   color: var(--kle-rose);
-  font-weight: 600;
-  text-align: right;
+  font-weight: 700;
+  text-align: left;
+  flex: 1 0 100%;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .field-foot .field-error:empty {
